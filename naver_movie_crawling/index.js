@@ -16,12 +16,26 @@ fs.readdir('poster', err => {
     }
 });
 
+fs.readdir('screenshot', err => {
+    if(err){
+        console.log('폴더가 없어 생성합니다.')
+        fs.mkdirSync('screenshot')
+    }
+});
+
 const crawler = async()=>{
     try{
         const end = [];
-        const browser = await puppeteer.launch({headless:false});
+        const browser = await puppeteer.launch({
+            headless:false,
+            args: ['--window-size=1920,1080']
+        });
         // await Promise.all(records.map(async (r,i)=>{
         const page = await browser.newPage();
+        await page.setViewport({
+            width:1920,
+            height:1080
+        });
         for (const[i,r] of records.entries()){
             await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.190 Safari/537.36');
             await page.goto(r[1]);
@@ -50,6 +64,16 @@ const crawler = async()=>{
                 end[i] = ([r[0],r[1], result.score.trim()]);
             };
             if(result.img){
+                await page.screenshot({
+                    path:`screenshot/${r[0]}.png`,
+                    fullPage:true,
+                    // clip:{
+                    //     x:100,
+                    //     y:100,
+                    //     width:300,
+                    //     height:300
+                    // }
+                });
                 const imgResult = await axios.get(result.img.replace(/\?.*$/, ''), {
                     responseType:'arraybuffer'
                 });
