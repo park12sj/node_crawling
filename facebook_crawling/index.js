@@ -2,9 +2,13 @@ const puppeteer = require('puppeteer');
 const dotenv = require('dotenv');
 dotenv.config();
 
+const db = require('./models')
+
 const crawler = async () => {
     try{
-        const browser = await puppeteer.launch({headless:false, args:['--window-size=1920,1080']});
+        await db.sequelize.sync();
+
+        const browser = await puppeteer.launch({headless:false, args:['--window-size=1920,1080', 'disable-notifications']});
         const page = await browser.newPage();
         await page.setViewport({
             width:1080,
@@ -18,15 +22,61 @@ const crawler = async () => {
         //     document.querySelector('#pass').value = password;
         //     document.querySelector('._6ltg button').click();
         // })
+
+
+        //login
         await page.type('#email', id);
         await page.type('#pass', password)
         await page.hover('._6ltg button');
         page.waitForTimeout(1000);
         await page.click('._6ltg button');
-        // await page.click('.s45kf179');
-        page.waitForTimeout(6000);
-        // await page.click('.iqfcb0g7');
-        await page.click('.s45kf179');
+        page.waitForResponse((response)=>{
+            response.url().includes('login_attempt')
+        });
+        
+        page.waitForTimeout(3000);
+        
+        //흰 화면 없애기
+        await page.waitForSelector('.iqfcb0g7 button');
+        await page.click('.iqfcb0g7 button');
+        page.waitForTimeout(1000);
+
+
+        
+        await page.waitForSelector('div[aria-labelledby]');
+
+        
+        const newPost = await page.evaluate(()=>{
+            const firstFeed = document.querySelectorAll('div[aria-labelledby]')[0];
+
+            // 첫번째 피드 작성자 이름, 작성 내용, 사진들
+            const name = firstFeed.querySelectorAll('[id^=jsc_c]') && firstFeed.querySelectorAll('[id^=jsc_c]')[1].textContent;
+            const content = firstFeed.querySelector('[data-ad-comet-preview]') && firstFeed.querySelector('[data-ad-comet-preview]').textContent;
+            const imgList = firstFeed.querySelectorAll('img.i09qtzwb') && [...firstFeed.querySelectorAll('img.i09qtzwb')].map(img => img.src);
+
+            //광고가 아니면 좋아요 누르기
+            const sponsored = document.querySelectorAll('div[aria-labelledby]')[0]
+                .textContent.includes('Sponsored');
+            if (!sponsored){
+                firstFeed.querySelector('div[aria-label=좋아요]').click()
+            }
+            return {
+                name, content, imgList
+            }
+        })
+        console.log(newPost)
+
+
+        // 로그 아웃 비활성화
+        // //select 계정 button for click logout
+        // await page.click('div[aria-label="계정"]')
+        // page.waitForTimeout(2000);
+
+        // //logout
+        // await page.evaluate(()=>{
+        //     document.querySelectorAll('div[aria-label="계정"] .a8nywdso .b20td4e0 .ow4ym5g4')[9].click();
+        // })
+        
 
     }catch(e){
         console.log(e);
