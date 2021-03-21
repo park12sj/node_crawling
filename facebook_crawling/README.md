@@ -10,3 +10,5 @@ To use this application,
 
 this application has function of
 1. login and logout automation
+2. crawl uploader's name, content, img and save in mysql
+3. if post is not ad, click lick button
