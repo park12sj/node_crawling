@@ -43,18 +43,41 @@ const crawler = async () => {
         
         page.waitForTimeout(3000);
 
-        const newPost = await page.evaluate(() => {
-            const article = document.querySelector('article:first-child');
-            const postId = article.querySelector('.c-Yi7') && article.querySelector('.c-Yi7').href;
-            const name = article.querySelector('a.FPmhX').title;
-            const img = article.querySelectorAll('img')[0].src;
-            const content = article.querySelector('[data-testid="post-comment-root"]').querySelectorAll('span')[1].querySelector('span').textContent;
-            
-            return {
-                postId, name, img, content
+        const result = []
+        let prevPostId = '';
+        while (result.length<10){
+            const newPost = await page.evaluate(() => {
+                const article = document.querySelector('article:first-child');
+                const postId = article.querySelector('.c-Yi7') && article.querySelector('.c-Yi7').href;
+                let name = article.querySelector('a.sqdOP');
+                if (name) {
+                    name = name.textContent;
+                } else {
+                    name = '#';
+                };
+                const img = article.querySelectorAll('img')[0].src;
+                const button = article.querySelector('[data-testid="post-comment-root"]').querySelectorAll('span')[1].querySelector('button')
+                if (button) {button.click()};
+                const content = article.querySelector('[data-testid="post-comment-root"]').querySelectorAll('span')[1].querySelector('span').textContent;
+                
+                return {
+                    postId, name, img, content
+                };    
+            }); 
+            if (newPost.postId !== prevPostId){ 
+                if (!result.find((v) => v.postId === newPost.postId)){
+                    result.push(newPost);
+                };
             };
-        });
-        console.log(newPost);
+            prevPostId = newPost.postId;
+            
+            await page.waitForTimeout(1000);
+            await page.evaluate(() => {
+                window.scrollBy(0,800);
+            });
+        }   
+        console.log(result);
+        console.log(result.length);
 
     }catch(e){
         console.log(e);
