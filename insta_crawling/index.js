@@ -2,11 +2,11 @@ const puppeteer = require('puppeteer');
 const dotenv = require('dotenv');
 dotenv.config();
 
-// const db = require('./models')
+const db = require('./models')
 
 const crawler = async () => {
     try{
-        // await db.sequelize.sync();
+        await db.sequelize.sync();
 
         const browser = await puppeteer.launch({
             headless:false, 
@@ -48,8 +48,10 @@ const crawler = async () => {
         while (result.length<10){
             const newPost = await page.evaluate(() => {
                 const article = document.querySelector('article:first-child');
-                const postId = article.querySelector('.c-Yi7') && article.querySelector('.c-Yi7').href;
-                let name = article.querySelector('a.sqdOP');
+                if (!article){
+                    return "continue"
+                };
+                const postId = article.querySelector('.c-Yi7') && article.querySelector('.c-Yi7').href.split('/').slice(-2,-1)[0];                let name = article.querySelector('a.sqdOP');
                 if (name) {
                     name = name.textContent;
                 } else {
@@ -59,16 +61,33 @@ const crawler = async () => {
                 const button = article.querySelector('[data-testid="post-comment-root"]').querySelectorAll('span')[1].querySelector('button')
                 if (button) {button.click()};
                 const content = article.querySelector('[data-testid="post-comment-root"]').querySelectorAll('span')[1].querySelector('span').textContent;
+
+                
+                const like = article.querySelectorAll('.wpO6b')[1];
+                if (like.querySelector('[aria-label="좋아요"]')){
+                    like.click()
+                };
                 
                 return {
                     postId, name, img, content
                 };    
             }); 
+            if (newPost === "continue"){
+                await page.evaluate(() => {
+                    window.scrollBy(0,100);
+                });
+                continue;
+            };
             if (newPost.postId !== prevPostId){ 
                 if (!result.find((v) => v.postId === newPost.postId)){
-                    result.push(newPost);
+                    const exist = await db.Instagram.findOne({where: { postId:newPost.postId}});
+                    if (!exist){
+                        result.push(newPost);
+                    }            
                 };
             };
+            await page.waitForTimeout(1000);
+
             prevPostId = newPost.postId;
             
             await page.waitForTimeout(1000);
@@ -76,7 +95,15 @@ const crawler = async () => {
                 window.scrollBy(0,800);
             });
         }   
-        console.log(result);
+        console.log(result)
+        await Promise.all(result.map((r) => {
+            return db.Instagram.create({
+                postId: r.postId,
+                media: r.img,
+                writer: r.name,
+                content: r.content
+            })
+        }))
         console.log(result.length);
 
     }catch(e){
