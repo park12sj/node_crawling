@@ -61,7 +61,6 @@ const crawler = async () => {
                 const button = article.querySelector('[data-testid="post-comment-root"]').querySelectorAll('span')[1].querySelector('button')
                 if (button) {button.click()};
                 const content = article.querySelector('[data-testid="post-comment-root"]').querySelectorAll('span')[1].querySelector('span').textContent;
-
                 
                 const like = article.querySelectorAll('.wpO6b')[1];
                 if (like.querySelector('[aria-label="좋아요"]')){
